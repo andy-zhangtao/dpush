@@ -6,7 +6,13 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/sirupsen/logrus"
@@ -15,9 +21,12 @@ import (
 
 var name string
 var debug bool
+var user string
+var passwd string
 
 const (
-	ModuleName = "dpush"
+	ModuleName          = "dpush"
+	AliDockerRepository = "registry.cn-beijing.aliyuncs.com"
 )
 
 func main() {
@@ -36,6 +45,16 @@ func main() {
 			Name:        "verbose, V",
 			Usage:       "Enable Verbose Logging",
 			Destination: &debug,
+		},
+		cli.StringFlag{
+			Name:        "user,u",
+			Usage:       "Ali Repository User",
+			Destination: &user,
+		},
+		cli.StringFlag{
+			Name:        "passwd,p",
+			Usage:       "Ali Repository Passwd",
+			Destination: &passwd,
 		},
 	}
 	app.Action = pushAction
@@ -59,8 +78,92 @@ func pushAction(c *cli.Context) error {
 	}
 
 	v, _ := cli.Version()
-	logrus.WithFields(logrus.Fields{"Docker Version": v.Get("Version"),"Go Version":v.Get("GoVersion")}).Debug(ModuleName)
+	logrus.WithFields(logrus.Fields{"Docker Version": v.Get("Version"), "Go Version": v.Get("GoVersion")}).Debug(ModuleName)
 
+	if name == "" {
+		// logrus.WithFields(logrus.Fields{"Image Name Empty!": ""}).Error(ModuleName)
+		return errors.New("Image Name Empty!")
+	}
+
+	logrus.WithFields(logrus.Fields{"Ready To Push Docker Image": name}).Debug(ModuleName)
+
+	repository := strings.Split(name, ":")
+	if len(repository) < 2 {
+		repository = append(repository, "latest")
+	}
+
+	aliName := fmt.Sprintf("%s/%s", AliDockerRepository, repository[0])
+	err = cli.TagImage(name, docker.TagImageOptions{
+		Repo:    aliName,
+		Tag:     repository[1],
+		Context: context.Background(),
+	})
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"Tag Docker Image Error": err}).Error(ModuleName)
+		return err
+	}
+
+	logrus.WithFields(logrus.Fields{"Repository": AliDockerRepository, "Pull Image": repository[0], "Tag": repository[1]}).Debug(ModuleName)
+	// pr, pw := io.Pipe()
+	//
+	// go func() {
+	// 	for {
+	// 		var data []byte
+	// 		n, err := pr.Read(data)
+	// 		if err != nil {
+	// 			logrus.WithFields(logrus.Fields{"Read log": err}).Error(ModuleName)
+	// 			return
+	// 		}
+	// 		if n > 0 {
+	// 			fmt.Println(data[:n])
+	// 		}
+	// 	}
+	// }()
+
+	auth, err := cli.AuthCheck(&docker.AuthConfiguration{
+		Username:      user,
+		Password:      passwd,
+		ServerAddress: AliDockerRepository,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	logrus.WithFields(logrus.Fields{"Auth": auth.Status}).Debug(ModuleName)
+
+	var buf bytes.Buffer
+	noStop := true
+	go func() {
+		for {
+			if noStop {
+				fmt.Println("\033[H\033[2J")
+				fmt.Println(buf.String())
+			} else {
+				return
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
+	err = cli.PushImage(docker.PushImageOptions{
+		Name: aliName,
+		Tag:  repository[1],
+		// Registry:          AliDockerRepository,
+		RawJSONStream: false,
+		OutputStream:  &buf,
+		Context:       context.Background(),
+	}, docker.AuthConfiguration{
+		Username:      user,
+		Password:      passwd,
+		ServerAddress: AliDockerRepository,
+	})
+	if err != nil {
+		noStop = false
+		return err
+	}
+
+	noStop = false
+	fmt.Printf("O! [%s] Push Succ.", aliName)
 	return nil
 }
 
