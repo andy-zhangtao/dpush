@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -28,6 +29,12 @@ const (
 	ModuleName          = "dpush"
 	AliDockerRepository = "registry.cn-beijing.aliyuncs.com"
 )
+
+type Process struct {
+	Status   string `json:"status"`
+	Progress string `json:"progress"`
+	Id       string `json:"id"`
+}
 
 func main() {
 	app := cli.NewApp()
@@ -137,19 +144,34 @@ func pushAction(c *cli.Context) error {
 	go func() {
 		for {
 			if noStop {
-				fmt.Println("\033[H\033[2J")
-				fmt.Println(buf.String())
+				if len(buf.Bytes()) > 0 {
+					ps := strings.Split(buf.String(), "\r\n")
+					if len(ps) > 0 {
+						for _, pps := range ps {
+							if pps != "" {
+								var pr Process
+								err := json.Unmarshal([]byte(pps), &pr)
+								if err != nil {
+									logrus.WithFields(logrus.Fields{"Unmarshal Error": err, "json": pps}).Error(ModuleName)
+									return
+								}
+								fmt.Printf("%s %s %s \n", pr.Id, pr.Status, pr.Progress)
+							}
+						}
+					}
+				}
+				time.Sleep(1 * time.Second)
 			} else {
 				return
 			}
-			time.Sleep(1 * time.Second)
+
 		}
 	}()
 	err = cli.PushImage(docker.PushImageOptions{
 		Name: aliName,
 		Tag:  repository[1],
 		// Registry:          AliDockerRepository,
-		RawJSONStream: false,
+		RawJSONStream: true,
 		OutputStream:  &buf,
 		Context:       context.Background(),
 	}, docker.AuthConfiguration{
