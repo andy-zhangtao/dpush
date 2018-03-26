@@ -57,7 +57,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "dpush"
 	app.Usage = "Push your docker image to ali docker repositry"
-	app.Version = "v0.1.1"
+	app.Version = "v0.2.0"
 	app.Author = "andy zhang"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -96,6 +96,10 @@ func pushAction(c *cli.Context) error {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
 
+	if name == "" {
+		cli.ShowAppHelp(c)
+		return nil
+	}
 	cli, err := checkDocker()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"Docker Check Error": err}).Error(ModuleName)
@@ -202,6 +206,7 @@ func pushAction(c *cli.Context) error {
 				}
 				time.Sleep(2 * time.Second)
 			} else {
+				fmt.Println(buf.String())
 				return
 			}
 
@@ -225,7 +230,22 @@ func pushAction(c *cli.Context) error {
 	}
 
 	noStop = false
-	fmt.Printf("O! [%s] Push Succ.", aliName)
+	if strings.Contains(buf.String(), "error") {
+		type E struct {
+			Error string `json:"error"`
+		}
+		ts := strings.Split(buf.String(), "\n")
+		for _, t := range ts {
+			if strings.Contains(t, "error") {
+				var e E
+				json.Unmarshal([]byte(t), &e)
+				fmt.Println(e.Error)
+			}
+		}
+	} else {
+		fmt.Printf("O! [%s] Push Succ.\n", aliName)
+	}
+
 	return nil
 }
 
