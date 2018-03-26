@@ -13,17 +13,20 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var name string
 var debug bool
 var user string
 var passwd string
+var needPasswd bool
 
 const (
 	ModuleName          = "dpush"
@@ -40,7 +43,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "dpush"
 	app.Usage = "Push your docker image to ali docker repositry"
-	app.Version = "v0.0.1"
+	app.Version = "v0.1.1"
 	app.Author = "andy zhang"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -58,10 +61,10 @@ func main() {
 			Usage:       "Ali Repository User",
 			Destination: &user,
 		},
-		cli.StringFlag{
+		cli.BoolFlag{
 			Name:        "passwd,p",
 			Usage:       "Ali Repository Passwd",
-			Destination: &passwd,
+			Destination: &needPasswd,
 		},
 	}
 	app.Action = pushAction
@@ -92,6 +95,16 @@ func pushAction(c *cli.Context) error {
 		return errors.New("Image Name Empty!")
 	}
 
+	if needPasswd {
+		passwd, err = getPasswd()
+		if err != nil {
+			return err
+		}
+		if passwd == ""{
+			return errors.New("Password Can not Empty!")
+		}
+	}
+
 	logrus.WithFields(logrus.Fields{"Ready To Push Docker Image": name}).Debug(ModuleName)
 
 	repository := strings.Split(name, ":")
@@ -111,21 +124,6 @@ func pushAction(c *cli.Context) error {
 	}
 
 	logrus.WithFields(logrus.Fields{"Repository": AliDockerRepository, "Pull Image": repository[0], "Tag": repository[1]}).Debug(ModuleName)
-	// pr, pw := io.Pipe()
-	//
-	// go func() {
-	// 	for {
-	// 		var data []byte
-	// 		n, err := pr.Read(data)
-	// 		if err != nil {
-	// 			logrus.WithFields(logrus.Fields{"Read log": err}).Error(ModuleName)
-	// 			return
-	// 		}
-	// 		if n > 0 {
-	// 			fmt.Println(data[:n])
-	// 		}
-	// 	}
-	// }()
 
 	auth, err := cli.AuthCheck(&docker.AuthConfiguration{
 		Username:      user,
@@ -197,4 +195,16 @@ func checkDocker() (client *docker.Client, err error) {
 
 	err = client.Ping()
 	return
+}
+
+// getPasswd 从Stdin读取口令
+func getPasswd() (string, error) {
+	fmt.Print("Password: ")
+	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return "", err
+	}
+	password := string(bytePassword)
+
+	return strings.TrimSpace(password), nil
 }
