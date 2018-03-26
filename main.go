@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	tm "github.com/buger/goterm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -100,7 +101,7 @@ func pushAction(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		if passwd == ""{
+		if passwd == "" {
 			return errors.New("Password Can not Empty!")
 		}
 	}
@@ -153,12 +154,12 @@ func pushAction(c *cli.Context) error {
 									logrus.WithFields(logrus.Fields{"Unmarshal Error": err, "json": pps}).Error(ModuleName)
 									return
 								}
-								fmt.Printf("%s %s %s \n", pr.Id, pr.Status, pr.Progress)
+								fmt.Printf("%s %s %s \n", tm.Color(pr.Id, tm.GREEN), tm.Color(pr.Status, tm.BLUE), tm.Color(pr.Progress, tm.RED))
 							}
 						}
 					}
 				}
-				time.Sleep(1 * time.Second)
+				time.Sleep(2 * time.Second)
 			} else {
 				return
 			}

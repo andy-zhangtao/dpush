@@ -24,6 +24,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/buger/goterm"
+  packages = ["."]
+  revision = "c9def0117b24a53e86f6c4c942e4042090a4fe8c"
+
+[[projects]]
+  branch = "master"
   name = "github.com/containerd/continuity"
   packages = ["pathdriver"]
   revision = "3e8f2ea4b190484acb976a5b378d373429639a1a"
@@ -153,6 +159,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1c7e904d448f22dc2fb1e51d97898db34f58d9845c0be01475bdfa9b323f1432"
+  inputs-digest = "2bb30a77bfe1e192c9479678d7c8db8215f1e45fc4b4f78fa68d988916410c15"
   solver-name = "gps-cdcl"
   solver-version = 1
