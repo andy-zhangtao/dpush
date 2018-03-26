@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"syscall"
@@ -18,6 +19,7 @@ import (
 
 	tm "github.com/buger/goterm"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pelletier/go-toml"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"golang.org/x/crypto/ssh/terminal"
@@ -29,6 +31,8 @@ var user string
 var passwd string
 var needPasswd bool
 
+var DPUSHCONF = os.Getenv("HOME") + "/.dpush.toml"
+
 const (
 	ModuleName          = "dpush"
 	AliDockerRepository = "registry.cn-beijing.aliyuncs.com"
@@ -38,6 +42,15 @@ type Process struct {
 	Status   string `json:"status"`
 	Progress string `json:"progress"`
 	Id       string `json:"id"`
+}
+
+type Repository struct {
+	Repositorys map[string]Info
+}
+
+type Info struct {
+	User   string `toml:"user"`
+	Passwd string `toml:"passwd"`
 }
 
 func main() {
@@ -92,8 +105,23 @@ func pushAction(c *cli.Context) error {
 	logrus.WithFields(logrus.Fields{"Docker Version": v.Get("Version"), "Go Version": v.Get("GoVersion")}).Debug(ModuleName)
 
 	if name == "" {
-		// logrus.WithFields(logrus.Fields{"Image Name Empty!": ""}).Error(ModuleName)
 		return errors.New("Image Name Empty!")
+	}
+
+	if user == "" {
+		info, err := getRepositoryInfo()
+		if err != nil {
+			return err
+		}
+
+		repoName, _ := reverRepositoryName(AliDockerRepository, true)
+		if info.Repositorys[repoName].User == "" || info.Repositorys[repoName].Passwd == "" {
+			return errors.New(fmt.Sprintf("This Repostiry [%s] Does Not Save. Please Type User & Password", AliDockerRepository))
+		}
+
+		user = info.Repositorys[repoName].User
+		passwd = info.Repositorys[repoName].Passwd
+		needPasswd = false
 	}
 
 	if needPasswd {
@@ -106,7 +134,7 @@ func pushAction(c *cli.Context) error {
 		}
 	}
 
-	logrus.WithFields(logrus.Fields{"Ready To Push Docker Image": name}).Debug(ModuleName)
+	logrus.WithFields(logrus.Fields{"Ready To Push Docker Image": name, "user": user, "passwd": fmt.Sprintf("%s*****%s", passwd[:1], passwd[len(passwd)-1:])}).Debug(ModuleName)
 
 	repository := strings.Split(name, ":")
 	if len(repository) < 2 {
@@ -137,6 +165,19 @@ func pushAction(c *cli.Context) error {
 	}
 
 	logrus.WithFields(logrus.Fields{"Auth": auth.Status}).Debug(ModuleName)
+
+	_, newName := reverRepositoryName(AliDockerRepository, true)
+	info := Repository{
+		Repositorys: map[string]Info{newName: Info{
+			User:   user,
+			Passwd: passwd,
+		}},
+	}
+
+	err = saveRepositoryInfo(info)
+	if err != nil {
+		return err
+	}
 
 	var buf bytes.Buffer
 	noStop := true
@@ -208,4 +249,54 @@ func getPasswd() (string, error) {
 	password := string(bytePassword)
 
 	return strings.TrimSpace(password), nil
+}
+
+// saveRepositoryInfo 保存仓库用户名和口令信息
+func saveRepositoryInfo(info Repository) error {
+	_, err := os.Open(DPUSHCONF)
+	if err != nil {
+		_, err := os.Create(DPUSHCONF)
+		if err != nil {
+			return err
+		}
+	}
+
+	data, err := toml.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(DPUSHCONF, data, 0755)
+}
+
+// getRepositoryInfo 读取保存的仓库用户信息
+func getRepositoryInfo() (*Repository, error) {
+
+	var info Repository
+	data, err := ioutil.ReadFile(DPUSHCONF)
+	if err != nil {
+		return nil, err
+	}
+
+	err = toml.Unmarshal(data, &info)
+	if err != nil {
+		return nil, err
+	}
+
+	return &info, nil
+}
+
+// reverRepositoryName 仓库名称反转
+// 如果forword 为true,则将registry.cn-beijing.aliyuncs.com反转成registry#cn-beijing#aliyuncs#com
+// 反之则还原为registry.cn-beijing.aliyuncs.com
+// 为了保持在Toml文件中的结构,在字段名前后添加了""
+func reverRepositoryName(name string, forword bool) (string, string) {
+	newName := ""
+	if forword {
+		newName = strings.Replace(name, ".", "#", -1)
+	} else {
+		newName = strings.Replace(name, "#", ".", -1)
+	}
+
+	return newName, fmt.Sprintf("\"%s\"", newName)
 }
