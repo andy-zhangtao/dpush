@@ -57,7 +57,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "dpush"
 	app.Usage = "Push your docker image to ali docker repositry"
-	app.Version = "v0.2.0"
+	app.Version = "v0.2.1"
 	app.Author = "andy zhang"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -185,6 +185,13 @@ func pushAction(c *cli.Context) error {
 
 	var buf bytes.Buffer
 	noStop := true
+	// pushInfo 保存当前的上传进度信息
+	pushInfo := make(map[string]string)
+	// idxOut 构建输出序列
+	var idxOut []string
+	// buildIdx 是否需要构建序列
+	buildIdx := true
+
 	go func() {
 		for {
 			if noStop {
@@ -199,12 +206,36 @@ func pushAction(c *cli.Context) error {
 									logrus.WithFields(logrus.Fields{"Unmarshal Error": err, "json": pps}).Error(ModuleName)
 									return
 								}
-								fmt.Printf("%s %s %s \n", tm.Color(pr.Id, tm.GREEN), tm.Color(pr.Status, tm.BLUE), tm.Color(pr.Progress, tm.RED))
+								pushInfo[pr.Id] = fmt.Sprintf("%s %s", tm.Color(pr.Status, tm.BLUE), tm.Color(pr.Progress, tm.RED))
 							}
+						}
+
+						if buildIdx {
+							// header不需要保存
+							for key, _ := range pushInfo {
+								if key != "" {
+									idxOut = append(idxOut, key)
+								}
+							}
+							buildIdx = false
+						}
+
+						fmt.Println(tm.Color(pushInfo[""], tm.BLACK))
+						delete(pushInfo, "")
+
+						// for key, value := range pushInfo {
+						// 	fmt.Printf("[%s] %s\n", tm.Color(key, tm.GREEN), value)
+						// }
+						for _, key := range idxOut {
+							fmt.Printf("[%s] %s\n", tm.Color(key, tm.GREEN), pushInfo[key])
 						}
 					}
 				}
+
+				// Header占了一行,此时游标也占据了一行,因此需要在map元素个数的基础之上在上移2行
+				tm.MoveCursorUp(len(pushInfo) + 2)
 				time.Sleep(2 * time.Second)
+				tm.Flush()
 			} else {
 				fmt.Println(buf.String())
 				return
