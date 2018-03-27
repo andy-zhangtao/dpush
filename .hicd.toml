@@ -1,0 +1,72 @@
+# language 标记工程语言类型
+language = "golang"
+
+# dependence 安装依赖. 当need为true时，会安装语言类型进行安装. 需要定制化安装，在cmd中输入命令
+[dependence]
+need = true
+cmd = [
+    "dep",
+    "init",
+    "-v"
+    ]
+
+# env 设置环境变量, 每组环境变量使用key=value的形式
+[env]
+# skip 是否跳过此阶段
+skip = true
+    # var 设定环境变量
+    [[env.var]]
+    key1="key11"
+    key2="key22"
+
+# before 执行构建之前的触发动作
+[before]
+# skip 是否跳过此阶段
+skip = true
+# script 执行指定脚本
+script = ["ls","-ltr"]
+
+# build 执行构建
+[build]
+# ismake 是否使用make进行构建. 如果选择false, 则调用语言本身的构建命令
+ismake = true
+# ispersistence 是否需要持久化. 如果需要构建镜像，建议选择持久化
+ispersistence = false
+
+    [build.make]
+    # 默认使用make all. 如果需要执行其他目标,在targets里面输入target name
+    targets = ["all","clean"]
+
+    [build.cmd]
+    # cmd 如果需要定制语言构建命令, 这里输入自定义的构建命令. 如果为空，则调用默认的语言构建命令
+    cmd = ["ls","cat"]
+
+    [build.persistence]
+    # path 持久化路径。 如果是目录, 则持久化此目录。 如果是文件, 则持久化此文件
+    path = "/var/file"
+
+    [build.test]
+    # test 如果需要执行unit Test. 这里输入测试命令. 如果为空，则跳过此阶段
+    cmd = ["test","-v","./.."]
+
+# after 执行构建之后的触发动作
+[after]
+# 是否构建docker image
+usedocker = true
+    [after.dockerfile]
+    # path Dockerfile路径。 如果为空，则默认为当前目录下的Dockerfile
+    path = "/var/path/Dockerfile"
+    # var 构建阶段需要传入的环境变量
+    [[after.var]]
+    key1="key11"
+    key2="key22"
+
+    # script 需要执行的脚本. 此阶段可以执行镜像上传，或者其他需要执行的命令
+    [after.script]
+    cmd = ["docker","push"]
+
+# integration 集成测试
+[integration]
+# need 是否需要集成测试
+need = true
+
