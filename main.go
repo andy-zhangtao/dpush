@@ -30,6 +30,8 @@ var debug bool
 var user string
 var passwd string
 var needPasswd bool
+// defaultNameSpace 默认命名空间,当上传没有命名空间镜像时会自动添加到这个命名空间中
+var defaultNameSpace string
 
 var DPUSHCONF = os.Getenv("HOME") + "/.dpush.toml"
 
@@ -46,6 +48,7 @@ type Process struct {
 
 type Repository struct {
 	Repositorys map[string]Info
+	Namespace   string
 }
 
 type Info struct {
@@ -57,7 +60,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "dpush"
 	app.Usage = "Push your docker image to ali docker repositry"
-	app.Version = "v0.2.1"
+	app.Version = "v0.3.0"
 	app.Author = "andy zhang"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -80,6 +83,11 @@ func main() {
 			Usage:       "Ali Repository Passwd",
 			Destination: &needPasswd,
 		},
+		cli.StringFlag{
+			Name:        "default,d",
+			Usage:       "The Default Namespace",
+			Destination: &defaultNameSpace,
+		},
 	}
 	app.Action = pushAction
 	err := app.Run(os.Args)
@@ -100,6 +108,7 @@ func pushAction(c *cli.Context) error {
 		cli.ShowAppHelp(c)
 		return nil
 	}
+
 	cli, err := checkDocker()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"Docker Check Error": err}).Error(ModuleName)
@@ -138,11 +147,16 @@ func pushAction(c *cli.Context) error {
 		}
 	}
 
-	logrus.WithFields(logrus.Fields{"Ready To Push Docker Image": name, "user": user, "passwd": fmt.Sprintf("%s*****%s", passwd[:1], passwd[len(passwd)-1:])}).Debug(ModuleName)
+	logrus.WithFields(logrus.Fields{"Ready To Push Docker Image": name, "user": user, "passwd": fmt.Sprintf("%s*****%s", passwd[:1], passwd[len(passwd)-1:]), "default namespace": defaultNameSpace}).Debug(ModuleName)
 
 	repository := strings.Split(name, ":")
 	if len(repository) < 2 {
 		repository = append(repository, "latest")
+	}
+
+	// 如果镜像中不包含/,例如 mysql:latest,此时将此镜像添加到默认命名空间中
+	if !strings.Contains(repository[0], "/") {
+		repository[0] = defaultNameSpace + "/" + repository[0]
 	}
 
 	aliName := fmt.Sprintf("%s/%s", AliDockerRepository, repository[0])
@@ -172,6 +186,7 @@ func pushAction(c *cli.Context) error {
 
 	_, newName := reverRepositoryName(AliDockerRepository, true)
 	info := Repository{
+		Namespace: defaultNameSpace,
 		Repositorys: map[string]Info{newName: Info{
 			User:   user,
 			Passwd: passwd,
@@ -326,6 +341,9 @@ func getRepositoryInfo() (*Repository, error) {
 	var info Repository
 	data, err := ioutil.ReadFile(DPUSHCONF)
 	if err != nil {
+		if os.IsNotExist(err){
+			return nil, errors.New("Maybe is you first time use Dpush~ Please type userID and password! Use -h for help")
+		}
 		return nil, err
 	}
 
@@ -334,6 +352,9 @@ func getRepositoryInfo() (*Repository, error) {
 		return nil, err
 	}
 
+	if defaultNameSpace == "" {
+		defaultNameSpace = info.Namespace
+	}
 	return &info, nil
 }
 
