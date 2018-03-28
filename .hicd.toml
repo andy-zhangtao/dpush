@@ -48,7 +48,7 @@ ispersistence = false
 
     [build.test]
     # test 如果需要执行unit Test. 这里输入测试命令. 如果为空，则跳过此阶段
-    cmd = ["test","-v","./.."]
+    cmd = ["test","-v","./..."]
 
     [build.exception]
     # exception 如果构建失败时运行的命令
