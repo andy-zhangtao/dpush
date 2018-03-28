@@ -36,7 +36,7 @@ ispersistence = false
 
     [build.make]
     # 默认使用make all. 如果需要执行其他目标,在targets里面输入target name
-    targets = ["all","clean"]
+    targets = ["all"]
 
     [build.cmd]
     # cmd 如果需要定制语言构建命令, 这里输入自定义的构建命令. 如果为空，则调用默认的语言构建命令
