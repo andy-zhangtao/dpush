@@ -14,7 +14,7 @@ cmd = [
 # env 设置环境变量, 每组环境变量使用key=value的形式
 [env]
 # skip 是否跳过此阶段
-skip = true
+skip = false
     # var 设定环境变量
     [[env.var]]
     key1="key11"
