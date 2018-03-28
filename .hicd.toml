@@ -59,8 +59,9 @@ ispersistence = false
 # 是否构建docker image
 usedocker = true
     [after.dockerfile]
+    name = "vikings/dpush"
     # path Dockerfile路径。 如果为空，则默认为当前目录下的Dockerfile
-    path = "/var/path/Dockerfile"
+    path = "Dockerfile"
     # var 构建阶段需要传入的环境变量
     [[after.var]]
     key1="key11"
