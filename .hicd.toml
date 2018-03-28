@@ -23,7 +23,7 @@ skip = false
 # before 执行构建之前的触发动作
 [before]
 # skip 是否跳过此阶段
-skip = true
+skip = false
 # script 执行指定脚本
 script = ["ls","-ltr"]
 
