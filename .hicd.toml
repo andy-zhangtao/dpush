@@ -50,6 +50,10 @@ ispersistence = false
     # test 如果需要执行unit Test. 这里输入测试命令. 如果为空，则跳过此阶段
     cmd = ["test","-v","./.."]
 
+    [build.exception]
+    # exception 如果构建失败时运行的命令
+    cmd = ["pwd"]
+
 # after 执行构建之后的触发动作
 [after]
 # 是否构建docker image
