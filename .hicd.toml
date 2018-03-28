@@ -6,7 +6,8 @@ language = "golang"
 need = true
 cmd = [
     "dep",
-    "init",
+    "ensure",
+    "--update",
     "-v"
     ]
 
