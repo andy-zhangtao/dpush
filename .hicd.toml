@@ -40,7 +40,7 @@ ispersistence = false
 
     [build.cmd]
     # cmd 如果需要定制语言构建命令, 这里输入自定义的构建命令. 如果为空，则调用默认的语言构建命令
-    cmd = ["ls","cat"]
+    cmd = ["go","build"]
 
     [build.persistence]
     # path 持久化路径。 如果是目录, 则持久化此目录。 如果是文件, 则持久化此文件
