@@ -60,7 +60,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "dpush"
 	app.Usage = "Push your docker image to ali docker repositry"
-	app.Version = "v0.3.0"
+	app.Version = "v0.3.1"
 	app.Author = "andy zhang"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -249,7 +249,7 @@ func pushAction(c *cli.Context) error {
 
 				// Header占了一行,此时游标也占据了一行,因此需要在map元素个数的基础之上在上移2行
 				tm.MoveCursorUp(len(pushInfo) + 2)
-				time.Sleep(2 * time.Second)
+				time.Sleep(500 * time.Millisecond)
 				tm.Flush()
 			} else {
 				fmt.Println(buf.String())
