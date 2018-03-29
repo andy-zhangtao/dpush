@@ -69,7 +69,7 @@ usedocker = true
 
     # script 需要执行的脚本. 此阶段可以执行镜像上传，或者其他需要执行的命令
     [after.script]
-    cmd = ["docker","push"]
+    cmd = ["docker","push","vikings/dpush"]
 
 # integration 集成测试
 [integration]
